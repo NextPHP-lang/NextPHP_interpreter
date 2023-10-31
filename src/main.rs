@@ -21,8 +21,8 @@ fn run_file(source: String) {
 }
 fn run(input: String) {
     println!("{}", input[1]);
-    Scanner::new(input[1]);
-    let tokens: Vec<Token> =  Scanner::scan_tokens();
+    let mut scanner =Scanner::new(input[1]);
+    let tokens =  scanner.scan_tokens();
     for Token in tokens {
         println!("{:?}", Token);
     };

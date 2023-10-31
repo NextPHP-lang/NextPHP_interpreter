@@ -21,6 +21,10 @@ pub enum TType {
     LessEqual,
     Bang,
     BangEqual,
+    Semicolon,
+    Dot,
+    Star,
+    Slash,
 
     Identifier,
     String,
