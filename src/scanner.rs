@@ -1,12 +1,15 @@
-use crate::Object::*;
+use std::fmt::Error;
+use std::io;
+use std::io::ErrorKind;
+//use crate::Object::*;
 use crate::token::Token;
 use crate::tokentype::TType;
 use crate::tokentype::TType::*;
 
 
 pub struct Scanner {
-    source: String,
-    tokens: Vec<Token>,
+    source: Vec<char>,
+    pub tokens: Vec<Token>,
     start: usize,
     current:usize,
     line:usize
@@ -26,6 +29,7 @@ impl Scanner {
         while !self.is_at_end() {
             self.start = self.current;
             self.scan_token()
+                .expect("could not scan tokens");
         }
 
         self.tokens.push(Token::new(Eof,"".to_string(), None, self.line))
@@ -34,7 +38,7 @@ impl Scanner {
     fn is_at_end(&self) -> bool {
         self.current >= self.source.len()
     }
-    fn scan_token(&mut self) -> Result<(), Err()> {
+    fn scan_token(&mut self) -> Result<(), std::io::Error> {
         let c: char = self.advance();
         match c {
             '{' => self.add_token(LeftCurly),
@@ -43,6 +47,11 @@ impl Scanner {
             ')' => self.add_token(RightParen),
             '[' => self.add_token(LeftBracket),
             ']' => self.add_token(RightBracket),
+            ',' => self.add_token(Comma),
+            ';' => self.add_token(Semicolon),
+            '.' => self.add_token(Dot),
+            '*' => self.add_token(Star),
+            '$' => self.add_token(Var),
             '-' => {
                 let token = if self.match_next('=') {
                     MinusEqual
@@ -95,12 +104,29 @@ impl Scanner {
                 };
                 self.add_token(token)
             },
-            ',' => self.add_token(Comma),
-            ';' => self.add_token(Semicolon),
-            '.' => self.add_token(Dot),
-            '*' => self.add_token(Star),
+            '/' => {
+                if self.match_next('/') {
+                    while let Some(c) = self.peek() {
+                        if self.peek() != Option::from('\n') {
+                            self.advance();
+                        } else {
+                            break;
+                        }
+                    }
+                } else {
+                    self.add_token(Slash)
+                }
+            },
+            ' ' | '\r' | '\t' => {},
+            '\n' => {
+                self.line += 1
+            }
+            '"' => {
+                self.string()
+            }
             _ => {
-                Err("unexpected character")
+                println!("unexpected character");
+                io::Error::new(ErrorKind::Other, "unexpected character");
             }
         }
         Ok(())
@@ -115,18 +141,40 @@ impl Scanner {
             .push(Token::new(ttype, lexeme, literal, self.line));
     }
     fn advance(&mut self) -> char {
-        let result = self.source.get(self.current).unwrap;
+        let result = *self.source.get(self.current).unwrap();
         self.current += 1;
         result
     }
 
     fn match_next(&mut self, expected: char) -> bool {
-        match self.source.get(self.source) {
-            Some(c) if c == expected => {
+        match self.source.get(self.current) {
+            Some(c) if *c == expected => {
                 self.current += 1;
                 true
             }
             _ => false
+        }
+    }
+    fn peek(&self) -> Option<char> {
+        self.source.get(self.current).copied()
+    }
+
+    fn string(&mut self) {
+        while let Some(c) = self.peek() {
+            match c {
+                '"' => {
+                    break;
+                },
+                '\n' => {
+                    self.line += 1;
+                },
+                _ => {}
+            }
+            self.advance()
+        }
+        if self.is_at_end() {
+            io::Error::new(ErrorKind::Other, "unterminated string")
+            println!("missing {} at {}", '"', self.line)
         }
     }
 }

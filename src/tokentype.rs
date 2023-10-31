@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum TType {
     LeftParen,
     RightParen,
@@ -27,7 +28,7 @@ pub enum TType {
     Slash,
 
     Identifier,
-    String,
+    STRING,
     Number,
 
     And,

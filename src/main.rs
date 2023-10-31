@@ -9,21 +9,21 @@ use crate::token::Token;
 
 
 fn main(){
-    let input = args().collect() ;
-    run_file(input);
+    let input: Vec<String> = args().collect() ;
+    run_file(input[2].clone());
 }
 struct NextPHP {}
 
 fn run_file(source: String) {
+    println!("{:?}", source);
     let input = fs::read_to_string(source)
         .expect("expected file");
     run(input);
 }
 fn run(input: String) {
-    println!("{}", input[1]);
-    let mut scanner =Scanner::new(input[1]);
+    let mut scanner = Scanner::new(input);
     let tokens =  scanner.scan_tokens();
-    for Token in tokens {
-        println!("{:?}", Token);
+    for token in scanner.tokens {
+        println!("{:?}", token);
     };
 }
