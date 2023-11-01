@@ -28,7 +28,7 @@ pub enum TType {
     Slash,
 
     Identifier,
-    STRING,
+    String_tok,
     Number,
 
     And,

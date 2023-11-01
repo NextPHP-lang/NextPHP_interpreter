@@ -1,6 +1,7 @@
 use std::fmt::Error;
 use std::io;
 use std::io::ErrorKind;
+use crate::object::obj;
 //use crate::Object::*;
 use crate::token::Token;
 use crate::tokentype::TType;
@@ -122,7 +123,7 @@ impl Scanner {
                 self.line += 1
             }
             '"' => {
-                self.string()
+                self.string()?;
             }
             _ => {
                 println!("unexpected character");
@@ -135,7 +136,7 @@ impl Scanner {
         self.add_token_object(ttype, None);
     }
 
-    fn add_token_object(&mut self, ttype: TType, literal: Option<()/*change this to object later*/>) {
+    fn add_token_object(&mut self, ttype: TType, literal: Option<obj/*change this to object later*/>) {
         let lexeme: String = self.source[self.start..self.current].iter().collect();
         self.tokens
             .push(Token::new(ttype, lexeme, literal, self.line));
@@ -159,7 +160,7 @@ impl Scanner {
         self.source.get(self.current).copied()
     }
 
-    fn string(&mut self) {
+    fn string(&mut self) -> Result<(), io::Error> {
         while let Some(c) = self.peek() {
             match c {
                 '"' => {
@@ -170,11 +171,17 @@ impl Scanner {
                 },
                 _ => {}
             }
-            self.advance()
+            self.advance();
         }
         if self.is_at_end() {
-            io::Error::new(ErrorKind::Other, "unterminated string")
-            println!("missing {} at {}", '"', self.line)
+            io::Error::new(ErrorKind::Other, "unterminated string");
+            println!("missing {} at {}", '"', self.line);
         }
+        println!("Start: {} Current: {}", self.start, self.current);
+        let value: String = self.source[(self.start + 1)..(self.current)]
+            .iter().collect();
+        self.advance();
+        self.add_token_object(TType::String_tok, Some(obj::str(value)));
+        Ok(())
     }
 }
