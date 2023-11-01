@@ -1,6 +1,7 @@
 use std::fmt::Error;
 use std::io;
 use std::io::ErrorKind;
+use std::ptr::write;
 use crate::object::obj;
 //use crate::Object::*;
 use crate::token::Token;
@@ -120,17 +121,56 @@ impl Scanner {
             },
             ' ' | '\r' | '\t' => {},
             '\n' => {
-                self.line += 1
+                self.line += 1;
             }
             '"' => {
                 self.string()?;
             }
+            '&' => {
+                if self.match_next('&') {
+                    self.add_token(And)
+                }
+            }
+            '|' => {
+                if self.match_next('|') {
+                    self.add_token(Or)
+                }
+            }
             _ => {
-                println!("unexpected character");
-                io::Error::new(ErrorKind::Other, "unexpected character");
+                if Scanner::is_digit(Some(c)) {
+                    self.number()
+                } else if Scanner::is_alpha(Some(c)) {
+                    self.identifier()
+                } else {
+                    println!("unexpected character");
+                    io::Error::new(ErrorKind::Other, "unexpected character");
+                }
+                
             }
         }
         Ok(())
+    }
+
+    fn keywords(check: &str) -> Option<TType> {
+        match check {
+            "or" => Some(Or),
+            "and" => Some(And),
+            "if" => Some(If),
+            "else" => Some(Else),
+            "elseif" => Some(ElseIf),
+            "true" => Some(True),
+            "false" => Some(False),
+            "while" => Some(While),
+            "for" => Some(For),
+            "fn" => Some(Fn),
+            "class" => Some(Class),
+            "return" => Some(Return),
+            "echo" => Some(Echo),
+            "null" => Some(Null),
+            _ => {
+                None
+            }
+        }
     }
     fn add_token(&mut self, ttype: TType) {
         self.add_token_object(ttype, None);
@@ -160,6 +200,10 @@ impl Scanner {
         self.source.get(self.current).copied()
     }
 
+    fn peek_next(&self) -> Option<char> {
+        self.source.get(self.current + 1).copied()
+    }
+
     fn string(&mut self) -> Result<(), io::Error> {
         while let Some(c) = self.peek() {
             match c {
@@ -177,11 +221,59 @@ impl Scanner {
             io::Error::new(ErrorKind::Other, "unterminated string");
             println!("missing {} at {}", '"', self.line);
         }
-        println!("Start: {} Current: {}", self.start, self.current);
         let value: String = self.source[(self.start + 1)..(self.current)]
             .iter().collect();
         self.advance();
         self.add_token_object(TType::String_tok, Some(obj::str(value)));
         Ok(())
     }
+    fn is_digit(c: Option<char>) -> bool {
+        if c >= Some('1') && c <= Some('9') {
+            true
+        } else {
+            false
+        }
+    }
+    fn is_alpha(c: Option<char>) -> bool {
+        if c >= Some('a') && c <= Some('z') ||
+           c >= Some('a') && c <= Some('z') ||
+           c == Some('_') {
+            true
+        } else {
+            false
+        }
+    }
+
+    fn is_alphanumeric(c: Option<char>) -> bool {
+        if Scanner::is_alpha(c) || Scanner::is_digit(c) {
+            true
+        } else {
+            false
+        }
+    }
+    fn number(&mut self) {
+        while Scanner::is_digit(self.peek()) {
+            self.advance();
+        }
+
+        if self.peek() == Some('.') && Scanner::is_digit(self.peek_next()) {
+            self.advance();
+        }
+        let value: String = self.source[self.start..self.current].iter().collect();
+        let num: f64 = value.parse().unwrap();
+        self.add_token_object(Number, Some(obj::num(num)))
+    }
+
+    fn identifier(&mut self) {
+        while Scanner::is_alphanumeric(self.peek()) {
+            self.advance();
+        }
+        let text: String = self.source[self.start..self.current].iter().collect();
+        if let Some(TType) = Scanner::keywords(text.as_str()) {
+            self.add_token(TType);
+        } else {
+            self.add_token(Identifier);
+        }
+    }
 }
+
