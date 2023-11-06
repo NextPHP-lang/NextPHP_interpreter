@@ -3,9 +3,9 @@ use crate::tokentype::TType;
 
 #[derive(Debug)]
 pub struct Token {
-    ttype: TType,
-    literal: String,
-    lexeme: Option<obj>,
+    pub ttype: TType,
+    pub literal: String,
+    pub lexeme: Option<obj>,
     line: usize,
 }
 
