@@ -3,7 +3,9 @@ use std::ptr::write;
 #[derive(Debug)]
 pub enum obj {
     str(String),
-    num(f64)
+    num(f64),
+    bool(bool),
+    null
 }
 
 impl fmt::Display for obj {
