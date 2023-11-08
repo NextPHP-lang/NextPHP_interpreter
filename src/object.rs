@@ -1,6 +1,6 @@
 use std::fmt;
 use std::ptr::write;
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum obj {
     str(String),
     num(f64),

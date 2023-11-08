@@ -1,7 +1,9 @@
-use std::fmt::Error;
+use std::fmt::{Error, format};
 use std::io;
 use std::io::ErrorKind;
 use std::ptr::write;
+use crate::error::ScrapError;
+use crate::error::ScrapError::ScannerError;
 use crate::object::obj;
 //use crate::Object::*;
 use crate::token::Token;
@@ -16,6 +18,7 @@ pub struct Scanner {
     current:usize,
     line:usize
 }
+
 
 impl Scanner {
     pub fn new(source: String) -> Scanner {
@@ -142,7 +145,8 @@ impl Scanner {
                 } else if Scanner::is_alpha(Some(c)) {
                     self.identifier()
                 } else {
-                    println!("unexpected character");
+                    let msg = format!("unexpected character: '{c}'");
+                    ScrapError::error(ScannerError, msg.as_str() , self.line, file!());
                     io::Error::new(ErrorKind::Other, "unexpected character");
                 }
                 
@@ -219,7 +223,7 @@ impl Scanner {
         }
         if self.is_at_end() {
             io::Error::new(ErrorKind::Other, "unterminated string");
-            println!("missing {} at {}", '"', self.line);
+            ScrapError::error(ScannerError, format!("missing {}", '"').as_str(), self.line, file!() )
         }
         let value: String = self.source[(self.start + 1)..(self.current)]
             .iter().collect();
