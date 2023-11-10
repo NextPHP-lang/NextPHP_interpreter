@@ -4,6 +4,7 @@ pub enum ScrapError {
     ScannerError,
     ParserError,
     RuntimeError,
+    EvaluatorError,
 }
 
 impl ScrapError {
@@ -18,6 +19,7 @@ impl ScrapError {
             Self::ScannerError => (),
             Self::ParserError => std::process::exit(0),
             Self::RuntimeError => std::process::exit(0),
+            Self::EvaluatorError => (),
         }
     }
 }

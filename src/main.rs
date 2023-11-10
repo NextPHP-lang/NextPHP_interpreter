@@ -5,13 +5,14 @@ mod object;
 mod ast;
 mod error;
 mod parser;
-// mod interpreter;
+mod interpreter;
 
 use std::env::args;
 use std::fs;
 use crate::error::ScrapError;
 use crate::error::ScrapError::RuntimeError;
-// use crate::interpreter::Interpreter;
+use crate::interpreter::Interpreter;
+
 use crate::parser::Parser;
 use crate::scanner::Scanner;
 use crate::token::Token;
@@ -42,5 +43,8 @@ fn run(input: String) {
     let mut parser = Parser::new(scanner.tokens);
     parser.parse();
 
-    // let mut interpreter = Interpreter::new(parser.expressions);
+    let mut interpreter = Interpreter::new(parser.expressions);
+    interpreter.evaluate();
+
+
 }}

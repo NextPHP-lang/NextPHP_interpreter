@@ -34,6 +34,8 @@ impl Parser {
             expressions: Vec::new()
         }
     }
+
+
     pub fn parse(&mut self) {
         while !self.is_at_end() {
             // println!("[current token]: {:?}", self.current().unwrap());
@@ -45,6 +47,11 @@ impl Parser {
                         println!("[starts as binary]: {:?} \n", expr);
                         self.expressions.push(expr)
                     }
+                },
+                LeftParen => {
+                  let expr = self.parse_group();
+                  println!("[starts as group]: {:?} \n", expr);
+                  self.expressions.push(expr);
                 },
                 Bang | Minus => {
                     if self.check_next(&[Number]) {
@@ -245,7 +252,9 @@ impl Parser {
             Number => {
                 println!("[obj]: number");
                 self.advance();
-                Expr::Literal(obj::num(token.literal.parse().unwrap()))
+                println!("[obj number]: {:?}", token.literal.parse::<f64>().unwrap());
+                Expr::Literal(obj::num(token.literal.parse::<f64>().unwrap()))
+
             },
             String_tok =>{
                 println!("[obj]: String");
@@ -268,7 +277,7 @@ impl Parser {
         self.advance();
         // println!("[token before match]: {:?}", self.current().unwrap());
         match self.current().unwrap().ttype {
-            Equal => {
+            Equal | PlusEqual | MinusEqual => {
                 self.advance();
                 let value = Box::new(self.parse_binary());
 
@@ -285,6 +294,11 @@ impl Parser {
         }
 
         expr
+    }
+
+    fn parse_echo(&mut self) -> Stmt {
+       let expr = Box::new(self.parse_binary());
+       Stmt::Print {value: expr}
     }
 
 
