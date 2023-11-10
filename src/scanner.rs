@@ -232,7 +232,7 @@ impl Scanner {
         Ok(())
     }
     fn is_digit(c: Option<char>) -> bool {
-        if c >= Some('1') && c <= Some('9') {
+        if c >= Some('0') && c <= Some('9') {
             true
         } else {
             false
