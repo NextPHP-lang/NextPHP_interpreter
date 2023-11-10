@@ -53,17 +53,21 @@ impl Parser {
                         self.expressions.push(expr)
                     }
                 },
+                Var => {
+                        let expr = self.parse_var();
+                        println!("[starts as var]: {:?} \n", expr);
+                        self.expressions.push(expr)
+                }
                 Semicolon => {
-                    println!("semicolon at end of line")
+                    let semicolon= self.current().unwrap();
+                    let expr = Expr::Eol {
+                        semicolon
+                    };
+                    println!("[EOL]: {:?} \n", expr);
+                    self.expressions.push(expr)
                 },
-                _ => println!("not implemented yet or unknown")
+                _ => println!("{:?} is not implemented yet or is unknown", self.current().unwrap())
             }
-            // if self.is_number() {
-            //     if self.check_next(&[Plus, Minus, Star, Slash]) {
-            //         let expr = self.parse_binary();
-            //         println!("[the expression]: {:?}", expr)
-            //     }
-            // }
             self.advance();
 
         }
@@ -90,6 +94,9 @@ impl Parser {
                         Box::new(self.parse_primary())
                     }
                 },
+                Var => {
+                  Box::new(self.parse_var())
+                },
                 _ => Box::new(self.parse_primary())
             };
             // println!("[left]: {:?}", left);
@@ -114,6 +121,9 @@ impl Parser {
                             } else {
                                 Box::new(self.parse_primary())
                             }
+                        },
+                        Var => {
+                            Box::new(self.parse_var())
                         },
                         _ => {
                             right_is_null = true;
@@ -192,6 +202,9 @@ impl Parser {
                         println!("[unary][number]: literal expression");
                         Box::new(self.parse_primary())
                     },
+                    Var => {
+                        Box::new(self.parse_var())
+                    },
                     _ => Box::new(self.parse_primary()) //dont know what it should do so number.
                 };
                 // println!("[unary]: right = {:?}", right);
@@ -247,7 +260,32 @@ impl Parser {
         }
 
     }
+    fn parse_var(&mut self) -> Expr {
+        let mut expr = Expr::Literal(obj::null);
+        self.advance();
+        let identifier = self.current().unwrap();
+        // println!("[identifier]: {:?}", identifier);
+        self.advance();
+        // println!("[token before match]: {:?}", self.current().unwrap());
+        match self.current().unwrap().ttype {
+            Equal => {
+                self.advance();
+                let value = Box::new(self.parse_binary());
 
+                expr = Expr::VarAssign {
+                    identifier,
+                    value
+                };
+            }
+            _ => {
+                expr = Expr::VarRef {
+                    identifier
+                };
+            }
+        }
+
+        expr
+    }
 
 
 
@@ -273,6 +311,14 @@ impl Parser {
        if self.index >= self.tokens.len() {
            true
        } else { false }
+    }
+
+    fn at_eol(&mut self) -> bool {
+        if self.current().unwrap().ttype  == Semicolon { //is true if its at the end of the line
+            true
+        } else {
+            false
+        }
     }
 
     fn peek(&mut self) -> Option<&Token> {
