@@ -240,7 +240,7 @@ impl Scanner {
     }
     fn is_alpha(c: Option<char>) -> bool {
         if c >= Some('a') && c <= Some('z') ||
-           c >= Some('a') && c <= Some('z') ||
+           c >= Some('A') && c <= Some('Z') ||
            c == Some('_') {
             true
         } else {
