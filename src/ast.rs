@@ -3,7 +3,6 @@ use std::fmt::{Formatter, write};
 use crate::scanner::*;
 use crate::token::*;
 use crate::object::*;
-//todo refactor this shit
 #[derive(Debug)]
 pub enum Expr {
     Binary {
@@ -28,9 +27,17 @@ pub enum Expr {
         caller: Box<Expr>,
         c_par: Token,
         args: Vec<Expr>
+    },
+    Eol {
+        semicolon: Token
     }
 }
 
+pub enum Stmt {
+    Print {
+        value: Box<Expr>
+    }
+}
 
 
 
