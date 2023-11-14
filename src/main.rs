@@ -13,7 +13,7 @@ use std::env::args;
 use std::fs;
 use crate::error::ScrapError;
 use crate::error::ScrapError::RuntimeError;
-use crate::interpreter::Evaluator;
+use crate::interpreter::Interpreter;
 use crate::parser::Parser;
 // use crate::parser::Parser;
 use crate::scanner::Scanner;
@@ -33,23 +33,25 @@ struct Scrap {}
 
 fn run_file(source: String) {
     // println!("{:?}", source);
-    let input = fs::read_to_string(source).expect("missing file");
-    run(input)
+    let input = fs::read_to_string(&source);
+    if input.is_err() {
+        ScrapError::error(
+            RuntimeError,
+            format!("unable to read file {}", source).as_str(),
+            line!() as usize,
+            file!()
+        )
+    } else {
+        run(input.unwrap())
+    }
+
 }
 fn run(input: String) {
     let mut scanner = Scanner::new(input);
-    let tokens =  &scanner.scan_tokens();
-    for token in &scanner.tokens {
-        println!("{:?} \n", token);
-    };
+    scanner.scan_tokens();
 
     let mut parser = Parser::new(scanner.tokens);
     parser.parse();
-    let mut evaluator = Evaluator::new(parser.expressions);
-    evaluator.start();
-
-    // let mut interpreter = Interpreter::new(parser.expressions);
-    // interpreter.evaluate();
-
-
+    let mut interpreter = Interpreter::new(parser.expressions);
+    interpreter.start();
 }}

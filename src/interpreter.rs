@@ -5,18 +5,17 @@ use crate::ast::Expr;
 use crate::error::ScrapError;
 use crate::error::ScrapError::{EvaluatorError, InvalidSyntax};
 use crate::object::obj;
-use crate::object::obj::eol;
 use crate::tokentype::TType;
 
-pub struct Evaluator {
+pub struct Interpreter {
     pub expressions: Vec<Expr>,
     pub variables: HashMap<String, obj>,
     index: usize,
 }
 
-impl Evaluator {
-    pub fn new(expressions: Vec<Expr>) -> Evaluator {
-        Evaluator {
+impl Interpreter {
+    pub fn new(expressions: Vec<Expr>) -> Interpreter {
+        Interpreter {
             expressions,
             variables: HashMap::new(),
             index: 0
@@ -24,7 +23,6 @@ impl Evaluator {
     }
     pub fn start(self) {
         for expression in &self.expressions {
-            println!("entered next expression");
             let mut result = Expr::evaluate(expression, Some(&self));
             match result {
                 obj::num(n) => {
@@ -42,16 +40,13 @@ impl Evaluator {
                 obj::variable(n,v) => {
                     println!("variable: name: {}, value: {}", n, *v);
                 }
-                obj::eol => {
-                    println!("eol")
-                }
             }
         }
 
     }
 }
 impl Expr {
-    fn evaluate(&self, x: Option<&Evaluator>) -> obj {
+    fn evaluate(&self, x: Option<&Interpreter>) -> obj {
         match self {
             Expr::Grouping(expr) => {
                return expr.evaluate(None)
@@ -156,6 +151,20 @@ impl Expr {
                                 } else {
                                     obj::bool(true)
                                 }
+                            },
+                            TType::And => {
+                                if b1 && b2 {
+                                    obj::bool(true)
+                                } else {
+                                    obj::bool(false)
+                                }
+                            },
+                            TType::Or => {
+                                if b1 || b2 {
+                                    obj::bool(true)
+                                } else {
+                                    obj::bool(false)
+                                }
                             }
                             _ => {
                                 ScrapError::error(
@@ -253,10 +262,6 @@ impl Expr {
                     );
                     return obj::null
                 }
-            },
-            Expr::Eol {semicolon} => {
-                println!("eol");
-                obj::eol
             },
             _ => {
                 ScrapError::error(InvalidSyntax, "unimplemented", 0, file!());

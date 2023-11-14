@@ -6,7 +6,7 @@ use crate::error::ScrapError;
 use crate::error::ScrapError::ParserError;
 use crate::object::obj;
 use crate::tokentype::TType;
-use crate::tokentype::TType::{Bang, BangEqual, Eof, EqualEqual, False, Greater, GreaterEqual, LeftParen, Less, LessEqual, Minus, Null, Number, Plus, Slash, Star, String_tok, True, While};
+use crate::tokentype::TType::{And, Bang, BangEqual, Eof, EqualEqual, False, Greater, GreaterEqual, LeftParen, Less, LessEqual, Minus, Null, Number, Or, Plus, Slash, Star, String_tok, True, While};
 
 pub struct Parser {
     pub tokens: Vec<Token>,
@@ -33,17 +33,42 @@ impl Parser {
     }
     //parsing functions
     fn expression(&mut self) -> Expr {
-        println!("0");
-        println!("{:?}", self.peek().unwrap());
-        let expr = self.equality();
-        format!("{:?}", expr);
+        let expr = self.or();
         return expr
     }
+
+    fn or(&mut self) -> Expr {
+        let mut expr = self.and();
+        while self.match_next(&[Or]) {
+            let operator = self.previous().unwrap().clone();
+            let right = self.and();
+            expr = Binary {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right)
+            };
+            return expr
+        }
+        expr
+    }
+
+    fn and(&mut self) -> Expr {
+        let mut expr = self.equality();
+        while self.match_next(&[And]) {
+            let operator = self.previous().unwrap().clone();
+            let right = self.equality();
+            expr = Binary {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right)
+            };
+            return expr
+        }
+        expr
+    }
     fn equality(&mut self) -> Expr {
-        println!("1");
         let mut expr = self.comparison();
         while self.match_next(&[BangEqual, EqualEqual]) {
-            println!("true");
             let operator = self.previous().unwrap().clone();
             let right = self.comparison();
             expr = Binary {
@@ -51,35 +76,29 @@ impl Parser {
                 operator,
                 right: Box::new(right)
             };
-            format!("{:?}", expr);
             return expr
         }
         expr
     }
 
     fn comparison(&mut self) -> Expr {
-        println!("2");
         let mut expr = self.term();
         while self.match_next(&[Greater,GreaterEqual,Less,LessEqual]) {
-            println!("true");
             let operator = self.previous().unwrap().clone();
             let right = self.term();
             expr = Binary {
                 left: Box::new(expr),
                 operator,
                 right: Box::new(right)
-            };
-            format!("{:?}", expr);
+            };;
             return expr
         }
         expr
     }
 
     fn term(&mut self) -> Expr {
-        println!("3");
         let mut expr = self.factor();
         while self.match_next(&[Plus, Minus]) {
-            println!("true");
             let operator = self.previous().unwrap().clone();
             let right = self.term();
             expr = Binary {
@@ -87,17 +106,14 @@ impl Parser {
                 operator,
                 right: Box::new(right)
             };
-            format!("{:?}", expr);
             return expr
         }
         expr
     }
 
     fn factor(&mut self) -> Expr {
-        println!("4");
         let mut expr = self.unary();
         while self.match_next(&[Star, Slash]) {
-            println!("true");
             let operator = self.previous().unwrap().clone();
             let right = self.factor();
             expr = Binary {
@@ -105,14 +121,11 @@ impl Parser {
                 operator,
                 right: Box::new(right)
             };
-            format!("{:?}", expr);
             return expr
         }
         expr
     }
     fn unary(&mut self) -> Expr {
-        println!("5");
-        println!("{:?}", self.peek().unwrap());
         let expression: Expr = match self.peek().unwrap().ttype {
             Minus | Bang => {
                 let operator = self.peek().unwrap().clone();
@@ -135,37 +148,28 @@ impl Parser {
 
     }
     fn parse_primary(&mut self) -> Expr {
-        println!("6");
-        println!("{:?}", self.peek().unwrap());
         match self.peek().unwrap().ttype {
             TType::Number => {
-                println!("parser: number");
                 self.advance();
-                println!("{:?}", self.peek().unwrap());
                 return Literal(obj::num(self.previous().unwrap().literal.parse::<f64>().unwrap()))
             },
             TType::String_tok => {
-                println!("parser: String");
                 self.advance();
                 return Literal(obj::str(self.previous().unwrap().clone().literal))
             },
             TType::True => {
-                println!("parser: true");
                 self.advance();
                 return Literal(obj::bool(true))
             },
             TType::False => {
-                println!("parser: false");
                 self.advance();
                 return Literal(obj::bool(false))
             },
             TType::Null => {
-                println!("parser: null");
                 self.advance();
                 return Literal(obj::null)
             },
             TType::LeftParen => {
-                println!("parser: group");
                 let expr = self.expression();
                 if self.peek().unwrap().ttype == TType::RightParen {
                     self.advance();
