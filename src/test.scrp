@@ -1,2 +1,0 @@
-$test = 1 + 1;
-$testVar1 = $test + 1;

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::ops::{Add,Sub,Mul,Neg,Not,Div, Deref};
 use std::str::Matches;
+use std::thread::current;
 use crate::ast::Expr;
 use crate::error::ScrapError;
 use crate::error::ScrapError::{EvaluatorError, InvalidSyntax};
@@ -23,26 +24,8 @@ impl Interpreter {
     }
     pub fn start(self) {
         for expression in &self.expressions {
-            let mut result = Expr::evaluate(expression, Some(&self));
-            match result {
-                obj::num(n) => {
-                    println!("number: {n}");
-                }
-                obj::bool(b) => {
-                    println!("bool: {b}");
-                }
-                obj::str(s) => {
-                    format!("string: {s}");
-                }
-                obj::null => {
-                    println!("Null");
-                }
-                obj::variable(n,v) => {
-                    println!("variable: name: {}, value: {}", n, *v);
-                }
-            }
+           Expr::evaluate(expression, Some(&self));
         }
-
     }
 }
 impl Expr {
@@ -247,22 +230,47 @@ impl Expr {
 
                 return obj::variable(id.clone(), Box::new(val.clone()))
             },
-            Expr::VarRef {identifier} => {
-                println!("eval: variable reference");
-                let id = &identifier.literal;
-                let map = &x.unwrap().variables;
-                let val = map.get(id);
-                if val.is_some() {
-                    let value = val.unwrap();
-                    return value.clone()
-                } else {
-                    ScrapError::error(
-                        InvalidSyntax, format!("undefined variable '{}'", id).as_str(),
-                        0, file!()
-                    );
-                    return obj::null
+            Expr::Print(expression) => {
+                let val = expression.evaluate(None);
+                match val {
+                    obj::num(n) => {
+                        println!("echo: {n}");
+                        obj::num(n)
+                    }
+                    obj::bool(b) => {
+                        println!("echo: {b}");
+                        obj::bool(b)
+                    }
+                    obj::str(s) => {
+                        format!("echo: {s}");
+                        obj::str(s.clone())
+                    }
+                    obj::null => {
+                        println!("Null");
+                        obj::null
+                    }
+                    obj::variable(n,v) => {
+                        println!("{}", *v);
+                        obj::variable(n.clone(), v.clone())
+                    }
                 }
-            },
+            }
+            // Expr::VarRef {identifier} => {
+            //     println!("eval: variable reference");
+            //     let id = &identifier.literal;
+            //     let map = &x.unwrap().variables;
+            //     let val = map.get(id);
+            //     if val.is_some() {
+            //         let value = val.unwrap();
+            //         return value.clone()
+            //     } else {
+            //         ScrapError::error(
+            //             InvalidSyntax, format!("undefined variable '{}'", id).as_str(),
+            //             0, operator.file.clone()
+            //         );
+            //         return obj::null
+            //     }
+            // },
             _ => {
                 ScrapError::error(InvalidSyntax, "unimplemented", 0, file!());
                 obj::null

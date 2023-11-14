@@ -16,7 +16,8 @@ pub struct Scanner {
     pub tokens: Vec<Token>,
     start: usize,
     current:usize,
-    line:usize
+    line: usize,
+    file: String
 }
 
 
@@ -28,6 +29,7 @@ impl Scanner {
             start: 0,
             current: 0,
             line: 1,
+            file: source
         }
     }
     pub fn scan_tokens(&mut self) {
@@ -223,7 +225,7 @@ impl Scanner {
         }
         if self.is_at_end() {
             io::Error::new(ErrorKind::Other, "unterminated string");
-            ScrapError::error(ScannerError, format!("missing {}", '"').as_str(), self.line, file!() )
+            ScrapError::error(ScannerError, format!("missing {}", '"').as_str(), self.line, file!())
         }
         let value: String = self.source[(self.start + 1)..(self.current)]
             .iter().collect();

@@ -33,14 +33,10 @@ pub enum Expr {
         operator: Token,
         right: Box<Expr>
     },
+    Print(Box<Expr>)
 }
 
-#[derive(Debug)]
-pub enum Stmt {
-    Print {
-        value: Box<Expr>
-    }
-}
+
 
 
 

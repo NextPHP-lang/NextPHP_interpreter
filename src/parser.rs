@@ -1,18 +1,19 @@
+use std::io::ErrorKind::InvalidData;
 use std::thread::current;
 use crate::Token;
-use crate::ast::Expr;
+use crate::ast::{Expr};
 use crate::ast::Expr::{Binary, Grouping, Literal, Unary};
 use crate::error::ScrapError;
-use crate::error::ScrapError::ParserError;
+use crate::error::ScrapError::{InvalidSyntax, ParserError};
 use crate::object::obj;
 use crate::tokentype::TType;
-use crate::tokentype::TType::{And, Bang, BangEqual, Eof, EqualEqual, False, Greater, GreaterEqual, LeftParen, Less, LessEqual, Minus, Null, Number, Or, Plus, Slash, Star, String_tok, True, While};
+use crate::tokentype::TType::{And, Bang, BangEqual, Echo, Eof, EqualEqual, False, Greater, GreaterEqual, LeftParen, Less, LessEqual, Minus, Null, Number, Or, Plus, Semicolon, Slash, Star, String_tok, True, While};
 
 pub struct Parser {
     pub tokens: Vec<Token>,
     current_token: Option<Token>,
     index: usize,
-    pub expressions: Vec<Expr>
+    pub expressions: Vec<Expr>,
 }
 
 impl Parser {
@@ -22,16 +23,38 @@ impl Parser {
             tokens,
             current_token,
             index: 0,
-            expressions: Vec::new()
+            expressions: Vec::new(),
         }
     }
     pub fn parse(&mut self) {
         println!("at parse func: {:?}", self.peek().unwrap());
-        let expr = self.expression();
+        let expr = self.statement();
         self.expressions.push(expr);
-        self.advance();
+        if self.peek().unwrap().ttype == Semicolon {
+            self.advance();
+        } else {
+            ScrapError::error(
+                InvalidSyntax,
+                "Missing semicolon",
+                self.peek().unwrap().line,
+                file!()
+            );
+        }
+
+        println!("at parse func after advance: {:?}", self.peek().unwrap());
     }
     //parsing functions
+    fn statement(&mut self) -> Expr {
+        if self.match_next(&[Echo]) {
+            return self.print_stmt()
+        } else {
+            return self.expression()
+        }
+    }
+    fn print_stmt(&mut self) -> Expr {
+        let value = self.expression();
+        Expr::Print(Box::new(value))
+    }
     fn expression(&mut self) -> Expr {
         let expr = self.or();
         return expr
