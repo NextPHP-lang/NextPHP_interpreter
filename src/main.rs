@@ -6,17 +6,15 @@ mod ast;
 mod error;
 // mod parser;
 mod interpreter;
-mod evaluator;
-mod parser_2;
+mod parser;
 
 
 use std::env::args;
 use std::fs;
 use crate::error::ScrapError;
 use crate::error::ScrapError::RuntimeError;
-use crate::evaluator::Evaluator;
-use crate::interpreter::Interpreter;
-use crate::parser_2::Parser;
+use crate::interpreter::Evaluator;
+use crate::parser::Parser;
 // use crate::parser::Parser;
 use crate::scanner::Scanner;
 use crate::token::Token;
@@ -28,7 +26,7 @@ fn main(){
     if input.len() < 3 {
         error::ScrapError::error(ScrapError::RuntimeError, "too few arguments", 1, file!())
     }
-    if input[1] == "main.rs" {
+    if input[1] == "scrap" {
         run_file(input[2].clone());
     }
 struct Scrap {}
