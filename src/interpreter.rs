@@ -54,11 +54,9 @@ impl Expr {
     fn evaluate(&self, x: Option<&Evaluator>) -> obj {
         match self {
             Expr::Grouping(expr) => {
-               println!("eval: group");
                return expr.evaluate(None)
             },
             Expr::Binary {left,operator,right} => {
-                println!("eval: binary");
                 let left = left.evaluate(None);
                 let right = right.evaluate(None);
                 match (left, right) {
@@ -76,6 +74,48 @@ impl Expr {
                             TType::Star => {
                                 obj::num(n1 * n2)
                             },
+                            TType::GreaterEqual => {
+                                if n1 > n2 || n1 == n2 {
+                                    obj::bool(true)
+                                } else {
+                                    obj::bool(false)
+                                }
+                            },
+                            TType::LessEqual => {
+                                if n1 < n2 || n1 == n2 {
+                                    obj::bool(true)
+                                } else {
+                                    obj::bool(false)
+                                }
+                            },
+                            TType::EqualEqual => {
+                                if n1 == n2 {
+                                    obj::bool(true)
+                                } else {
+                                    obj::bool(false)
+                                }
+                            },
+                            TType::Greater => {
+                                if n1 > n2 {
+                                    obj::bool(true)
+                                } else {
+                                    obj::bool(false)
+                                }
+                            },
+                            TType::Less => {
+                                if n1 < n2 {
+                                    obj::bool(true)
+                                } else {
+                                    obj::bool(false)
+                                }
+                            },
+                            TType::BangEqual => {
+                                if n1 == n2 {
+                                    obj::bool(false)
+                                } else {
+                                    obj::bool(true)
+                                }
+                            }
                             _ => {
                                 ScrapError::error(
                                     EvaluatorError,
@@ -100,7 +140,33 @@ impl Expr {
                                 obj::null
                             }
                         }
-                    }
+                    },
+                    (obj::bool(b1), obj::bool(b2)) => {
+                        match operator.ttype {
+                            TType::EqualEqual => {
+                                if b1 == b2 {
+                                    obj::bool(true)
+                                } else {
+                                    obj::bool(false)
+                                }
+                            },
+                            TType::BangEqual => {
+                                if b1 == b2 {
+                                    obj::bool(false)
+                                } else {
+                                    obj::bool(true)
+                                }
+                            }
+                            _ => {
+                                ScrapError::error(
+                                    EvaluatorError,
+                                    "unable to do this operation on boolean values",
+                                    operator.line, file!()
+                                );
+                                obj::null
+                            }
+                        }
+                    },
                     (_, obj::num(n)) | (obj::num(n), _) => {
                         ScrapError::error(
                             InvalidSyntax,
@@ -116,11 +182,9 @@ impl Expr {
 
             },
             Expr::Literal(val) => {
-                println!("eval: literal");
                 return val.clone()
             },
             Expr::Unary {operator,right} => {
-                println!("eval: unary");
                 let right = right.evaluate(None);
                 match right {
                     obj::num(n) => {
@@ -137,7 +201,12 @@ impl Expr {
                     obj::bool(b) => {
                         match operator.ttype {
                             TType::Bang => {
-                                obj::bool(!b)
+                                if b == true {
+                                    obj::bool(false)
+                                } else {
+                                    obj::bool(true)
+                                }
+
                             },
                             _ => {
                                 println!("not a unary operator");

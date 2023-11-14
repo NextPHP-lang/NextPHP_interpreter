@@ -116,6 +116,7 @@ impl Parser {
         let expression: Expr = match self.peek().unwrap().ttype {
             Minus | Bang => {
                 let operator = self.peek().unwrap().clone();
+                self.advance();
                 let right = self.unary();
                 return Unary {
                     operator,
