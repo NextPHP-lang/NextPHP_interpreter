@@ -5,6 +5,7 @@ pub enum ScrapError {
     ParserError,
     RuntimeError,
     EvaluatorError,
+    InvalidSyntax,
 }
 
 impl ScrapError {
@@ -20,6 +21,7 @@ impl ScrapError {
             Self::ParserError => std::process::exit(0),
             Self::RuntimeError => std::process::exit(0),
             Self::EvaluatorError => (),
+            Self::InvalidSyntax => std::process::exit(0)
         }
     }
 }

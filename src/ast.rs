@@ -29,7 +29,7 @@ pub enum Expr {
         args: Vec<Expr>
     },
     Comp {
-      left: Box<Expr>,
+        left: Box<Expr>,
         operator: Token,
         right: Box<Expr>
     },

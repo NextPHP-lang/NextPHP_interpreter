@@ -1,10 +1,16 @@
 use std::fmt;
-use std::ptr::write;
+use std::ops::{Add, Div, Mul, Neg, Not, Sub};
+use std::ptr::{addr_of, write};
+use crate::error::ScrapError;
+use crate::error::ScrapError::InvalidSyntax;
+
 #[derive(Debug, Clone)]
 pub enum obj {
     str(String),
     num(f64),
     bool(bool),
+    variable(String, Box<obj>),
+    eol,
     null
 }
 
