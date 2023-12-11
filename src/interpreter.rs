@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use std::ops::{Add,Sub,Mul,Neg,Not,Div, Deref};
+use std::process::id;
 use std::str::Matches;
 use std::thread::current;
-use crate::ast::Expr;
+use crate::ast::{Expr, Stmt};
 use crate::error::ScrapError;
 use crate::error::ScrapError::{EvaluatorError, InvalidSyntax};
 use crate::object::obj;
@@ -11,25 +12,51 @@ use crate::tokentype::TType;
 pub struct Interpreter {
     pub expressions: Vec<Expr>,
     pub variables: HashMap<String, obj>,
+    pub  statements: Vec<Stmt>,
     index: usize,
 }
 
 impl Interpreter {
-    pub fn new(expressions: Vec<Expr>) -> Interpreter {
+    pub fn new(expressions: Vec<Expr>, statements: Vec<Stmt>) -> Interpreter {
         Interpreter {
             expressions,
+            statements,
             variables: HashMap::new(),
             index: 0
         }
     }
-    pub fn start(self) {
-        for expression in &self.expressions {
-           Expr::evaluate(expression, Some(&self));
+    fn getvar(&mut self, name: String) -> &obj {
+        if self.variables.contains_key(name.as_str()) {
+           let val = self.variables.get(name.as_str()).unwrap();
+            println!("{}", val);
+           return val
+        } else {
+            ScrapError::error(
+                InvalidSyntax,
+                &*("undefined variable: ".to_owned() + &*name),
+                line!() as usize,
+                file!()
+            );
+            &obj::null
+        }
+
+
+    }
+    fn setvar(&mut self, name: String, value: obj) {
+        if self.variables.contains_key(name.as_str()) {
+            self.variables.remove(name.as_str());
+        }
+        self.variables.insert(name, value);
+    }
+    pub fn start(&mut self) {
+        while self.index < self.statements.len() {
+            Stmt::run_stmt(self.statements[self.index].clone(),  self);
+            self.index += 1;
         }
     }
 }
 impl Expr {
-    fn evaluate(&self, x: Option<&Interpreter>) -> obj {
+    fn evaluate(&self, mut interpreter: Option<Interpreter>) -> obj {
         match self {
             Expr::Grouping(expr) => {
                return expr.evaluate(None)
@@ -107,7 +134,17 @@ impl Expr {
                     (obj::str(s1), obj::str(s2)) => {
                         match operator.ttype {
                             TType::Plus => {
-                                obj::str(s1 + &*s2)
+                                let s1 = s1.replace('"', "");
+                                let s2 = s2.replace('"', "");
+                                let mut str = s1;
+                                str.push_str(&*s2);
+                                obj::str(str)
+                            }
+                            TType::Minus => {
+                                let s1 = s1.replace('"', "");
+                                let s2 = s2.replace('"', "");
+                                let mut str = s1.replace(&s2, "");
+                                obj::str(str)
                             }
                             _ => {
                                 ScrapError::error(
@@ -215,62 +252,7 @@ impl Expr {
                         obj::null
                     }
                 }
-                },
-            Expr::VarAssign {identifier,value} => {
-                println!("eval: variable assign");
-                let val = value.evaluate(None);
-                let id = identifier.literal.clone();
-                let mut map = x.unwrap().variables.clone();
-                if !map.contains_key(&id) {
-                    map.insert(id.clone(), val.clone());
-                } else if map.contains_key(&id) {
-                    map.remove(&id);
-                    map.insert(id.clone(), val.clone());
-                }
-
-                return obj::variable(id.clone(), Box::new(val.clone()))
             },
-            Expr::Print(expression) => {
-                let val = expression.evaluate(None);
-                match val {
-                    obj::num(n) => {
-                        println!("echo: {n}");
-                        obj::num(n)
-                    }
-                    obj::bool(b) => {
-                        println!("echo: {b}");
-                        obj::bool(b)
-                    }
-                    obj::str(s) => {
-                        format!("echo: {s}");
-                        obj::str(s.clone())
-                    }
-                    obj::null => {
-                        println!("Null");
-                        obj::null
-                    }
-                    obj::variable(n,v) => {
-                        println!("{}", *v);
-                        obj::variable(n.clone(), v.clone())
-                    }
-                }
-            }
-            // Expr::VarRef {identifier} => {
-            //     println!("eval: variable reference");
-            //     let id = &identifier.literal;
-            //     let map = &x.unwrap().variables;
-            //     let val = map.get(id);
-            //     if val.is_some() {
-            //         let value = val.unwrap();
-            //         return value.clone()
-            //     } else {
-            //         ScrapError::error(
-            //             InvalidSyntax, format!("undefined variable '{}'", id).as_str(),
-            //             0, operator.file.clone()
-            //         );
-            //         return obj::null
-            //     }
-            // },
             _ => {
                 ScrapError::error(InvalidSyntax, "unimplemented", 0, file!());
                 obj::null
@@ -278,5 +260,135 @@ impl Expr {
 
         }
 
+    }
+}
+
+impl Stmt {
+    pub fn run_stmt(stmt: Stmt, mut interpreter: &mut Interpreter) {
+        match stmt {
+            Stmt::Print(statement) => {
+                match *statement {
+                    Stmt::Expression(expression) => {
+                        let val = expression.evaluate(None);
+                        match val {
+                            obj::num(n) => {
+                                println!("{n}");
+                            }
+                            obj::bool(b) => {
+                                println!("{b}");
+
+                            }
+                            obj::str(s) => {
+                                println!("{}", s);
+
+                            }
+                            obj::null => {
+                                println!("Null");
+
+                            }
+                        }
+                    },
+                    Stmt::Variable_call {identifier} => {
+                        let var = interpreter.variables.get(&*identifier).unwrap();
+                        match var {
+                            obj::num(n) => {
+                                println!("{n}");
+                            }
+                            obj::bool(b) => {
+                                println!("{b}");
+
+                            }
+                            obj::str(s) => {
+                                println!("{}", s);
+
+                            }
+                            obj::null => {
+                                println!("Null");
+
+                            }
+                        }
+
+                    }
+                    _ => {
+                        ScrapError::error(
+                            InvalidSyntax,
+                            "unable to print statement",
+                                line!() as usize,
+                            file!()
+                        )
+                    }
+                }
+
+            },
+            Stmt::Variable_assign {identifier, value} => {
+                let val = value.evaluate(None);
+                if interpreter.variables.contains_key(&*identifier) {
+                    interpreter.variables.remove(&*identifier);
+                    interpreter.variables.insert(identifier,val);
+                } else {
+                    interpreter.variables.insert(identifier,val);
+                }
+            }
+            Stmt::Variable_call {identifier} => {
+                let var = interpreter.variables.get(&*identifier).unwrap();
+            }
+            Stmt::Expression(expression) => {
+                expression.evaluate(None);
+            },
+            Stmt::Ifstmt {expr, block, elseblock} => {
+                let expression = expr.evaluate(None);
+                match expression {
+                    obj::bool(b) => {
+                        if b == true {
+                            match *block {
+                                Stmt::Block(stmts) => {
+                                    for stmt in stmts {
+                                        Stmt::run_stmt(stmt,interpreter);
+                                    }
+                                }
+                                _ => {
+                                    ScrapError::error(
+                                        InvalidSyntax,
+                                        "exected block",
+                                        line!() as usize,
+                                        file!()
+                                    )
+                                }
+                            }
+
+                        } else if elseblock.is_some() && b == false {
+                            match *elseblock.unwrap() {
+                                Stmt::Block(stmts) => {
+                                    for stmt in stmts {
+                                        Stmt::run_stmt(stmt,interpreter);
+                                    }
+                                }
+                                _ => {
+                                    ScrapError::error(
+                                        InvalidSyntax,
+                                        "exected block",
+                                        line!() as usize,
+                                        file!()
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    _ => {
+                        ScrapError::error(
+                            EvaluatorError,
+                            "can't perform any other operation in if statement than comparison",
+                            line!() as usize,
+                            file!()
+                        )
+                    }
+                }
+            },
+
+            _ => {
+                println!("UNIMPLEMENTED")
+            }
+
+        }
     }
 }
