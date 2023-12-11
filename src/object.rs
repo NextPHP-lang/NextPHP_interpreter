@@ -9,7 +9,6 @@ pub enum obj {
     str(String),
     num(f64),
     bool(bool),
-    variable(String, Box<obj>),
     null
 }
 

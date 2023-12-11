@@ -1,19 +1,22 @@
 use std::io::ErrorKind::InvalidData;
 use std::thread::current;
+use colored::Colorize;
 use crate::Token;
-use crate::ast::{Expr};
+use crate::ast::{Expr, Stmt};
 use crate::ast::Expr::{Binary, Grouping, Literal, Unary};
+/*use crate::ast::Stmt::Block;*/
 use crate::error::ScrapError;
 use crate::error::ScrapError::{InvalidSyntax, ParserError};
 use crate::object::obj;
 use crate::tokentype::TType;
-use crate::tokentype::TType::{And, Bang, BangEqual, Echo, Eof, EqualEqual, False, Greater, GreaterEqual, LeftParen, Less, LessEqual, Minus, Null, Number, Or, Plus, Semicolon, Slash, Star, String_tok, True, While};
+use crate::tokentype::TType::{And, Bang, BangEqual, Echo, Else, Eof, Equal, EqualEqual, False, Greater, GreaterEqual, Identifier, If, LeftBracket, LeftCurly, LeftParen, Less, LessEqual, Minus, Null, Number, Or, Plus, RightCurly, Semicolon, Slash, Star, String_tok, True, Var, While};
 
 pub struct Parser {
     pub tokens: Vec<Token>,
     current_token: Option<Token>,
     index: usize,
     pub expressions: Vec<Expr>,
+    pub statements: Vec<Stmt>
 }
 
 impl Parser {
@@ -24,41 +27,123 @@ impl Parser {
             current_token,
             index: 0,
             expressions: Vec::new(),
+            statements: Vec::new(),
         }
     }
     pub fn parse(&mut self) {
-        println!("at parse func: {:?}", self.peek().unwrap());
-        let expr = self.statement();
-        self.expressions.push(expr);
-        if self.peek().unwrap().ttype == Semicolon {
-            self.advance();
-        } else {
-            ScrapError::error(
-                InvalidSyntax,
-                "Missing semicolon",
-                self.peek().unwrap().line,
-                file!()
-            );
+        while !self.is_at_end() {
+            let expr = self.declaration();
+            self.statements.push(expr.clone()); //remove clone when removing debug println
+            let semicolons: Vec<TType> = vec![Semicolon,LeftCurly,RightCurly];
+            if semicolons.contains(&self.peek().unwrap().ttype) {
+                self.advance();
+            } else {
+                /*println!("prev token: {:?}", self.previous());
+                println!("current token: {:?}", self.peek());*/
+                ScrapError::error(
+                    InvalidSyntax,
+                    "Missing semicolon",
+                    self.peek().unwrap().line,
+                    file!()
+                );
+            }
+            // println!("stmt: {:#?}", &expr)
         }
 
-        println!("at parse func after advance: {:?}", self.peek().unwrap());
     }
     //parsing functions
-    fn statement(&mut self) -> Expr {
-        if self.match_next(&[Echo]) {
-            return self.print_stmt()
+    fn declaration(&mut self) -> Stmt {
+        if self.match_next(&[Var]) {
+            return self.variable_declaration();
         } else {
-            return self.expression()
+            return self.statement();
         }
     }
-    fn print_stmt(&mut self) -> Expr {
-        let value = self.expression();
-        Expr::Print(Box::new(value))
+    fn statement(&mut self) -> Stmt {
+        // println!("{} returned statement", self.current_token.clone().unwrap().line);
+        if self.match_next(&[Echo]) {
+            return self.print_stmt()
+        } else if self.match_next(&[If]) {
+            // println!("reached if in statement");
+            let test = self.if_stmt();
+            // println!("{:#?}", test);
+            return test;
+        } else {
+            return Stmt::Expression(Box::new(self.expression()));
+        }
     }
+    fn variable_declaration(&mut self) -> Stmt {
+        // println!("{:?}", self.current_token);
+        let mut val = Expr::Literal(obj::null);
+        let mut identifier= String::new();
+        let mut statement = Stmt::Expression(Box::new(Literal(obj::null)));
+        if self.match_next(&[Identifier]) {
+            // println!("{:?}", self.current_token);
+            identifier = self.previous().unwrap().literal.clone();
+            if self.match_next(&[Equal]) {
+                val = self.expression();
+                statement =  Stmt::Variable_assign {
+                    identifier,
+                    value: Box::new(val)
+                };
+            } else {
+                statement = Stmt::Variable_call {identifier}
+            }
+        }
+        statement
+    }
+    fn if_stmt(&mut self) -> Stmt {
+        let expr = Box::new(self.expression());
+        let mut block = self.declaration();
+        let mut block2 = self.declaration();
+        if self.match_next(&[LeftCurly]) {
+            let mut stmts = Vec::new();
+            while !self.check(&RightCurly) {
+                let expr = self.declaration();
+
+                stmts.push(expr);
+                self.advance();
+            }
+
+            block = Stmt::Block(stmts);
+        }
+        self.advance();
+        if self.match_next(&[Else]) {
+            if self.match_next(&[LeftCurly]) {
+                let mut stmts = Vec::new();
+                while !self.check(&RightCurly) {
+                    let expr = self.declaration();
+
+                    stmts.push(expr);
+                    self.advance();
+                }
+                block2 = Stmt::Block(stmts);
+
+            }
+            Stmt::Ifstmt {
+                expr,
+                block: Box::new(block),
+                elseblock: Some(Box::new(block2))
+            }
+        } else {
+            Stmt::Ifstmt {
+                expr,
+                block: Box::new(block),
+                elseblock: None
+            }
+        }
+
+    }
+    fn print_stmt(&mut self) -> Stmt {
+        let value = self.declaration();
+        Stmt::Print(Box::new(value))
+    }
+
     fn expression(&mut self) -> Expr {
         let expr = self.or();
         return expr
     }
+
 
     fn or(&mut self) -> Expr {
         let mut expr = self.and();
@@ -205,12 +290,9 @@ impl Parser {
                     );
                 }
                 return Grouping(Box::new(expr))
-            }
-
+            },
             _ => {
-
                 return Literal(obj::null);
-                std::process::exit(0);
             }
         }
     }

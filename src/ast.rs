@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt;
 use std::fmt::{Formatter, write};
 use crate::scanner::*;
@@ -16,26 +17,35 @@ pub enum Expr {
         operator: Token,
         right: Box<Expr>
     },
-    VarRef {
-        identifier: Token
-    },
-    VarAssign {
-        identifier: Token,
-        value: Box<Expr>
-    },
-    Call {
-        caller: Box<Expr>,
-        c_par: Token,
-        args: Vec<Expr>
-    },
     Comp {
         left: Box<Expr>,
         operator: Token,
         right: Box<Expr>
     },
-    Print(Box<Expr>)
-}
+    Print(Box<Expr>),
 
+}
+#[derive(Debug, Clone)]
+pub enum Stmt {
+    Print(Box<Stmt>),
+    Expression(Box<Expr>),
+    Ifstmt {
+        expr: Box<Expr>,
+        block: Box<Stmt>,
+        elseblock: Option<Box<Stmt>>
+    },
+    Block(Vec<Stmt>),
+    Variable_assign {
+        identifier: String,
+        value: Box<Expr>
+    },
+    Variable_call{
+        identifier: String
+    }
+    // VarRef{
+    //     name: String
+    // }
+}
 
 
 
