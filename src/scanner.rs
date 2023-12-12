@@ -1,7 +1,7 @@
-use std::fmt::{Error, format};
+
 use std::io;
 use std::io::ErrorKind;
-use std::ptr::write;
+
 use crate::error::ScrapError;
 use crate::error::ScrapError::ScannerError;
 use crate::object::obj;
@@ -17,7 +17,6 @@ pub struct Scanner {
     start: usize,
     current:usize,
     line: usize,
-    file: String
 }
 
 
@@ -29,7 +28,6 @@ impl Scanner {
             start: 0,
             current: 0,
             line: 1,
-            file: source
         }
     }
     pub fn scan_tokens(&mut self) {
@@ -113,7 +111,7 @@ impl Scanner {
             },
             '/' => {
                 if self.match_next('/') {
-                    while let Some(c) = self.peek() {
+                    while let Some(_c) = self.peek() {
                         if self.peek() != Option::from('\n') {
                             self.advance();
                         } else {
@@ -172,7 +170,7 @@ impl Scanner {
             "class" => Some(Class),
             "return" => Some(Return),
             "echo" => Some(Echo),
-            "null" => Some(Null),
+            "Null" => Some(Null),
             _ => {
                 None
             }
@@ -230,7 +228,7 @@ impl Scanner {
         let value: String = self.source[(self.start + 1)..(self.current)]
             .iter().collect();
         self.advance();
-        self.add_token_object(TType::String_tok, Some(obj::str(value)));
+        self.add_token_object(TType::String_tok, Some(obj::Str(value)));
         Ok(())
     }
     fn is_digit(c: Option<char>) -> bool {
@@ -267,7 +265,7 @@ impl Scanner {
         }
         let value: String = self.source[self.start..self.current].iter().collect();
         let num: f64 = value.parse().unwrap();
-        self.add_token_object(Number, Some(obj::num(num)))
+        self.add_token_object(Number, Some(obj::Num(num)))
     }
 
     fn identifier(&mut self) {

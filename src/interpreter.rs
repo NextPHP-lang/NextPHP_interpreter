@@ -1,8 +1,7 @@
 use std::collections::HashMap;
-use std::ops::{Add,Sub,Mul,Neg,Not,Div, Deref};
-use std::process::id;
-use std::str::Matches;
-use std::thread::current;
+use std::fmt::format;
+
+
 use crate::ast::{Expr, Stmt};
 use crate::error::ScrapError;
 use crate::error::ScrapError::{EvaluatorError, InvalidSyntax};
@@ -25,29 +24,7 @@ impl Interpreter {
             index: 0
         }
     }
-    fn getvar(&mut self, name: String) -> &obj {
-        if self.variables.contains_key(name.as_str()) {
-           let val = self.variables.get(name.as_str()).unwrap();
-            println!("{}", val);
-           return val
-        } else {
-            ScrapError::error(
-                InvalidSyntax,
-                &*("undefined variable: ".to_owned() + &*name),
-                line!() as usize,
-                file!()
-            );
-            &obj::null
-        }
 
-
-    }
-    fn setvar(&mut self, name: String, value: obj) {
-        if self.variables.contains_key(name.as_str()) {
-            self.variables.remove(name.as_str());
-        }
-        self.variables.insert(name, value);
-    }
     pub fn start(&mut self) {
         while self.index < self.statements.len() {
             Stmt::run_stmt(self.statements[self.index].clone(),  self);
@@ -56,69 +33,94 @@ impl Interpreter {
     }
 }
 impl Expr {
-    fn evaluate(&self, mut interpreter: Option<Interpreter>) -> obj {
+    fn evaluate(&self, mut interpreter: &mut Interpreter) -> obj {
         match self {
             Expr::Grouping(expr) => {
-               return expr.evaluate(None)
+               return expr.evaluate(interpreter)
             },
             Expr::Binary {left,operator,right} => {
-                let left = left.evaluate(None);
-                let right = right.evaluate(None);
-                match (left, right) {
-                    (obj::num(n1), obj::num(n2)) => {
+                let mut left = left.evaluate(interpreter);
+                let mut right = right.evaluate(interpreter);
+                match left {
+                    obj::Identifier(ref s) => {
+                        if interpreter.variables.get(s.as_str()).is_some() {
+                            left = interpreter
+                                .variables
+                                .get(s.as_str())
+                                .unwrap().clone();
+                        }
+                    }
+                    _ => {
+                        left = left;
+                    }
+                }
+                // println!("{left}");
+                match right {
+                    obj::Identifier(ref s) => {
+                        if interpreter.variables.get(s.as_str()).is_some() {
+                            right = interpreter.variables.get(s.as_str()).unwrap().clone();
+                        }
+                    }
+                    _ => {
+                        right = right;
+                    }
+                }
+                // println!("{right}");
+                match (left.clone(), right.clone()) {
+                    (obj::Num(n1), obj::Num(n2)) => {
                         match operator.ttype {
                             TType::Plus => {
-                                obj::num(n1 + n2)
+                                obj::Num(n1 + n2)
                             },
                             TType::Minus => {
-                                obj::num(n1 - n2)
+                                obj::Num(n1 - n2)
                             },
                             TType::Slash => {
-                                obj::num(n1 / n2)
+                                obj::Num(n1 / n2)
                             },
                             TType::Star => {
-                                obj::num(n1 * n2)
+                                obj::Num(n1 * n2)
                             },
                             TType::GreaterEqual => {
                                 if n1 > n2 || n1 == n2 {
-                                    obj::bool(true)
+                                    obj::Bool(true)
                                 } else {
-                                    obj::bool(false)
+                                    obj::Bool(false)
                                 }
                             },
                             TType::LessEqual => {
                                 if n1 < n2 || n1 == n2 {
-                                    obj::bool(true)
+                                    obj::Bool(true)
                                 } else {
-                                    obj::bool(false)
+                                    obj::Bool(false)
                                 }
                             },
                             TType::EqualEqual => {
                                 if n1 == n2 {
-                                    obj::bool(true)
+                                    obj::Bool(true)
                                 } else {
-                                    obj::bool(false)
+                                    obj::Bool(false)
                                 }
                             },
                             TType::Greater => {
                                 if n1 > n2 {
-                                    obj::bool(true)
+                                    obj::Bool(true)
                                 } else {
-                                    obj::bool(false)
+                                    obj::Bool(false)
                                 }
                             },
                             TType::Less => {
                                 if n1 < n2 {
-                                    obj::bool(true)
+                                    obj::Bool(true)
                                 } else {
-                                    obj::bool(false)
+                                    obj::Bool(false)
                                 }
                             },
                             TType::BangEqual => {
                                 if n1 == n2 {
-                                    obj::bool(false)
+                                    obj::Bool(false)
                                 } else {
-                                    obj::bool(true)
+                                    obj::Bool(true)
                                 }
                             }
                             _ => {
@@ -127,24 +129,24 @@ impl Expr {
                                     "undefined binary operator",
                                     operator.line, file!()
                                 );
-                                obj::null
+                                obj::Null
                             }
                         }
                     },
-                    (obj::str(s1), obj::str(s2)) => {
+                    (obj::Str(s1), obj::Str(s2)) => {
                         match operator.ttype {
                             TType::Plus => {
                                 let s1 = s1.replace('"', "");
                                 let s2 = s2.replace('"', "");
                                 let mut str = s1;
                                 str.push_str(&*s2);
-                                obj::str(str)
+                                obj::Str(str)
                             }
                             TType::Minus => {
                                 let s1 = s1.replace('"', "");
                                 let s2 = s2.replace('"', "");
-                                let mut str = s1.replace(&s2, "");
-                                obj::str(str)
+                                let str = s1.replace(&s2, "");
+                                obj::Str(str)
                             }
                             _ => {
                                 ScrapError::error(
@@ -152,38 +154,38 @@ impl Expr {
                                     "unable to '-', '*' '/' a string ",
                                     operator.line, file!()
                                 );
-                                obj::null
+                                obj::Null
                             }
                         }
                     },
-                    (obj::bool(b1), obj::bool(b2)) => {
+                    (obj::Bool(b1), obj::Bool(b2)) => {
                         match operator.ttype {
                             TType::EqualEqual => {
                                 if b1 == b2 {
-                                    obj::bool(true)
+                                    obj::Bool(true)
                                 } else {
-                                    obj::bool(false)
+                                    obj::Bool(false)
                                 }
                             },
                             TType::BangEqual => {
                                 if b1 == b2 {
-                                    obj::bool(false)
+                                    obj::Bool(false)
                                 } else {
-                                    obj::bool(true)
+                                    obj::Bool(true)
                                 }
                             },
                             TType::And => {
                                 if b1 && b2 {
-                                    obj::bool(true)
+                                    obj::Bool(true)
                                 } else {
-                                    obj::bool(false)
+                                    obj::Bool(false)
                                 }
                             },
                             TType::Or => {
                                 if b1 || b2 {
-                                    obj::bool(true)
+                                    obj::Bool(true)
                                 } else {
-                                    obj::bool(false)
+                                    obj::Bool(false)
                                 }
                             }
                             _ => {
@@ -192,20 +194,20 @@ impl Expr {
                                     "unable to do this operation on boolean values",
                                     operator.line, file!()
                                 );
-                                obj::null
+                                obj::Null
                             }
                         }
                     },
-                    (_, obj::num(n)) | (obj::num(n), _) => {
+                    (_, obj::Num(_n)) | (obj::Num(_n), _) => {
                         ScrapError::error(
                             InvalidSyntax,
                             "unable to '+', '-', '*' and '/' here",
                             operator.line, file!()
                         );
-                        obj::null
+                        obj::Null
                     }
                     _ => {
-                        obj::null
+                        obj::Null
                     }
                 }
 
@@ -214,32 +216,32 @@ impl Expr {
                 return val.clone()
             },
             Expr::Unary {operator,right} => {
-                let right = right.evaluate(None);
+                let right = right.evaluate(interpreter);
                 match right {
-                    obj::num(n) => {
+                    obj::Num(n) => {
                         match operator.ttype {
                             TType::Minus => {
-                                obj::num(-n)
+                                obj::Num(-n)
                             },
                             _ => {
                                 println!("not a unary operator");
-                                obj::null
+                                obj::Null
                             }
                         }
                     },
-                    obj::bool(b) => {
+                    obj::Bool(b) => {
                         match operator.ttype {
                             TType::Bang => {
                                 if b == true {
-                                    obj::bool(false)
+                                    obj::Bool(false)
                                 } else {
-                                    obj::bool(true)
+                                    obj::Bool(true)
                                 }
 
                             },
                             _ => {
                                 println!("not a unary operator");
-                                obj::null
+                                obj::Null
                             }
                         }
                     },
@@ -249,13 +251,13 @@ impl Expr {
                             "unable to make unary",
                             operator.line, file!()
                         );
-                        obj::null
+                        obj::Null
                     }
                 }
             },
             _ => {
                 ScrapError::error(InvalidSyntax, "unimplemented", 0, file!());
-                obj::null
+                obj::Null
             }
 
         }
@@ -264,47 +266,53 @@ impl Expr {
 }
 
 impl Stmt {
-    pub fn run_stmt(stmt: Stmt, mut interpreter: &mut Interpreter) {
+    pub fn run_stmt(stmt: Stmt, interpreter: &mut Interpreter) {
         match stmt {
             Stmt::Print(statement) => {
                 match *statement {
                     Stmt::Expression(expression) => {
-                        let val = expression.evaluate(None);
+                        let val = expression.evaluate(interpreter);
                         match val {
-                            obj::num(n) => {
+                            obj::Num(n) => {
                                 println!("{n}");
                             }
-                            obj::bool(b) => {
+                            obj::Bool(b) => {
                                 println!("{b}");
 
                             }
-                            obj::str(s) => {
+                            obj::Str(s) => {
                                 println!("{}", s);
 
                             }
-                            obj::null => {
+                            obj::Null => {
                                 println!("Null");
 
+                            }
+                            obj::Identifier(i) => {
+                                print!("{:?}", interpreter.variables.get(i.as_str()))
                             }
                         }
                     },
-                    Stmt::Variable_call {identifier} => {
+                    Stmt::VariableCall {identifier} => {
                         let var = interpreter.variables.get(&*identifier).unwrap();
                         match var {
-                            obj::num(n) => {
+                            obj::Num(n) => {
                                 println!("{n}");
                             }
-                            obj::bool(b) => {
+                            obj::Bool(b) => {
                                 println!("{b}");
 
                             }
-                            obj::str(s) => {
+                            obj::Str(s) => {
                                 println!("{}", s);
 
                             }
-                            obj::null => {
+                            obj::Null => {
                                 println!("Null");
 
+                            }
+                            obj::Identifier(i) => {
+                                println!("{i}");
                             }
                         }
 
@@ -320,8 +328,9 @@ impl Stmt {
                 }
 
             },
-            Stmt::Variable_assign {identifier, value} => {
-                let val = value.evaluate(None);
+            Stmt::VariableAssign {identifier, value} => {
+                let val = value.evaluate(interpreter);
+
                 if interpreter.variables.contains_key(&*identifier) {
                     interpreter.variables.remove(&*identifier);
                     interpreter.variables.insert(identifier,val);
@@ -329,16 +338,16 @@ impl Stmt {
                     interpreter.variables.insert(identifier,val);
                 }
             }
-            Stmt::Variable_call {identifier} => {
-                let var = interpreter.variables.get(&*identifier).unwrap();
+            Stmt::VariableCall {identifier} => {
+                let _var = interpreter.variables.get(&*identifier).unwrap();
             }
             Stmt::Expression(expression) => {
-                expression.evaluate(None);
+                expression.evaluate(interpreter);
             },
             Stmt::Ifstmt {expr, block, elseblock} => {
-                let expression = expr.evaluate(None);
+                let expression = expr.evaluate(interpreter);
                 match expression {
-                    obj::bool(b) => {
+                    obj::Bool(b) => {
                         if b == true {
                             match *block {
                                 Stmt::Block(stmts) => {
@@ -384,6 +393,25 @@ impl Stmt {
                     }
                 }
             },
+            Stmt::WhileStmt {expr, block} => {
+                while expr.evaluate(interpreter) == obj::Bool(true) {
+                    match *block.clone() {
+                        Stmt::Block(b) => {
+                            for stmt in b {
+                                Stmt::run_stmt(stmt, interpreter)
+                            }
+                        }
+                        _ => {
+                            ScrapError::error(
+                                EvaluatorError,
+                                "expected bool",
+                                    line!() as usize,
+                                file!()
+                            )
+                        }
+                    }
+                }
+            }
 
             _ => {
                 println!("UNIMPLEMENTED")

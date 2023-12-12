@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-use std::fmt;
-use std::fmt::{Formatter, write};
-use crate::scanner::*;
+
+
+
+
 use crate::token::*;
 use crate::object::*;
 #[derive(Debug, Clone)]
@@ -17,12 +17,6 @@ pub enum Expr {
         operator: Token,
         right: Box<Expr>
     },
-    Comp {
-        left: Box<Expr>,
-        operator: Token,
-        right: Box<Expr>
-    },
-    Print(Box<Expr>),
 
 }
 #[derive(Debug, Clone)]
@@ -34,17 +28,18 @@ pub enum Stmt {
         block: Box<Stmt>,
         elseblock: Option<Box<Stmt>>
     },
+    WhileStmt {
+        expr: Box<Expr>,
+        block: Box<Stmt>
+    },
     Block(Vec<Stmt>),
-    Variable_assign {
+    VariableAssign {
         identifier: String,
         value: Box<Expr>
     },
-    Variable_call{
+    VariableCall {
         identifier: String
     }
-    // VarRef{
-    //     name: String
-    // }
 }
 
 

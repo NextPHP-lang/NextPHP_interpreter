@@ -1,6 +1,6 @@
-use std::io::ErrorKind::InvalidData;
-use std::thread::current;
-use colored::Colorize;
+
+
+
 use crate::Token;
 use crate::ast::{Expr, Stmt};
 use crate::ast::Expr::{Binary, Grouping, Literal, Unary};
@@ -9,7 +9,7 @@ use crate::error::ScrapError;
 use crate::error::ScrapError::{InvalidSyntax, ParserError};
 use crate::object::obj;
 use crate::tokentype::TType;
-use crate::tokentype::TType::{And, Bang, BangEqual, Echo, Else, Eof, Equal, EqualEqual, False, Greater, GreaterEqual, Identifier, If, LeftBracket, LeftCurly, LeftParen, Less, LessEqual, Minus, Null, Number, Or, Plus, RightCurly, Semicolon, Slash, Star, String_tok, True, Var, While};
+use crate::tokentype::TType::{And, Bang, BangEqual, Echo, Else, Eof, Equal, EqualEqual, False, Greater, GreaterEqual, Identifier, If, LeftCurly, LeftParen, Less, LessEqual, Minus, Null, Number, Or, Plus, RightCurly, Semicolon, Slash, Star, String_tok, True, Var, While};
 
 pub struct Parser {
     pub tokens: Vec<Token>,
@@ -47,7 +47,7 @@ impl Parser {
                     file!()
                 );
             }
-            // println!("stmt: {:#?}", &expr)
+            println!("stmt: {:#?}", &expr)
         }
 
     }
@@ -68,26 +68,29 @@ impl Parser {
             let test = self.if_stmt();
             // println!("{:#?}", test);
             return test;
+        } else if self.match_next(&[While]) {
+            return self.while_stmt();
         } else {
             return Stmt::Expression(Box::new(self.expression()));
         }
     }
     fn variable_declaration(&mut self) -> Stmt {
         // println!("{:?}", self.current_token);
-        let mut val = Expr::Literal(obj::null);
+        let operations = [Equal, Plus, Minus, Star, Slash];
+        let mut val = Expr::Literal(obj::Null);
         let mut identifier= String::new();
-        let mut statement = Stmt::Expression(Box::new(Literal(obj::null)));
+        let mut statement = Stmt::Expression(Box::new(Literal(obj::Null)));
         if self.match_next(&[Identifier]) {
             // println!("{:?}", self.current_token);
             identifier = self.previous().unwrap().literal.clone();
             if self.match_next(&[Equal]) {
                 val = self.expression();
-                statement =  Stmt::Variable_assign {
+                statement =  Stmt::VariableAssign {
                     identifier,
                     value: Box::new(val)
                 };
             } else {
-                statement = Stmt::Variable_call {identifier}
+                statement = Stmt::VariableCall {identifier};
             }
         }
         statement
@@ -133,6 +136,25 @@ impl Parser {
             }
         }
 
+    }
+    fn while_stmt(&mut self) -> Stmt {
+        let expr = Box::new(self.expression());
+        let mut block = self.declaration();
+        if self.match_next(&[LeftCurly]) {
+            let mut stmts = Vec::new();
+            while !self.check(&RightCurly) {
+                let expr = self.declaration();
+
+                stmts.push(expr);
+                self.advance();
+            }
+
+            block = Stmt::Block(stmts);
+        }
+        Stmt::WhileStmt {
+            expr,
+            block: Box::new(block)
+        }
     }
     fn print_stmt(&mut self) -> Stmt {
         let value = self.declaration();
@@ -198,7 +220,7 @@ impl Parser {
                 left: Box::new(expr),
                 operator,
                 right: Box::new(right)
-            };;
+            };
             return expr
         }
         expr
@@ -244,7 +266,7 @@ impl Parser {
                     right: Box::new(right)
                 }
             },
-            Number | Null | String_tok | True | False | LeftParen => {
+            Number | Null | String_tok | True | False | Identifier | LeftParen => {
                 return self.parse_primary();
             },
             _ => {
@@ -259,23 +281,23 @@ impl Parser {
         match self.peek().unwrap().ttype {
             TType::Number => {
                 self.advance();
-                return Literal(obj::num(self.previous().unwrap().literal.parse::<f64>().unwrap()))
+                return Literal(obj::Num(self.previous().unwrap().literal.parse::<f64>().unwrap()))
             },
             TType::String_tok => {
                 self.advance();
-                return Literal(obj::str(self.previous().unwrap().clone().literal))
+                return Literal(obj::Str(self.previous().unwrap().clone().literal))
             },
             TType::True => {
                 self.advance();
-                return Literal(obj::bool(true))
+                return Literal(obj::Bool(true))
             },
             TType::False => {
                 self.advance();
-                return Literal(obj::bool(false))
+                return Literal(obj::Bool(false))
             },
             TType::Null => {
                 self.advance();
-                return Literal(obj::null)
+                return Literal(obj::Null)
             },
             TType::LeftParen => {
                 let expr = self.expression();
@@ -291,8 +313,12 @@ impl Parser {
                 }
                 return Grouping(Box::new(expr))
             },
+            TType::Identifier => {
+                self.advance();
+                return Literal(obj::Identifier(self.previous().unwrap().literal.clone()))
+            }
             _ => {
-                return Literal(obj::null);
+                return Literal(obj::Null);
             }
         }
     }

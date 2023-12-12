@@ -15,7 +15,7 @@ impl Token {
             ttype,
             literal,
             lexeme,
-            line
+            line,
         }
     }
 }
