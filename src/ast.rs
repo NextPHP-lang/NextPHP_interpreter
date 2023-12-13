@@ -4,7 +4,7 @@
 
 use crate::token::*;
 use crate::object::*;
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Binary {
         left: Box<Expr>,
@@ -17,6 +17,11 @@ pub enum Expr {
         operator: Token,
         right: Box<Expr>
     },
+    Assign {
+        left: Box<Expr>,
+        operator: Token,
+        right: Box<Expr>
+    }
 
 }
 #[derive(Debug, Clone)]
@@ -38,7 +43,7 @@ pub enum Stmt {
         value: Box<Expr>
     },
     VariableCall {
-        identifier: String
+        identifier: Box<Expr>
     }
 }
 

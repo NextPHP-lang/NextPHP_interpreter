@@ -1,7 +1,7 @@
 use crate::object::obj;
 use crate::tokentype::TType;
 
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone, PartialEq)]
 pub struct Token {
     pub ttype: TType,
     pub literal: String,

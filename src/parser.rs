@@ -1,15 +1,13 @@
-
-
-
+use std::process::id;
 use crate::Token;
 use crate::ast::{Expr, Stmt};
-use crate::ast::Expr::{Binary, Grouping, Literal, Unary};
+use crate::ast::Expr::{Assign, Binary, Grouping, Literal, Unary};
 /*use crate::ast::Stmt::Block;*/
 use crate::error::ScrapError;
 use crate::error::ScrapError::{InvalidSyntax, ParserError};
 use crate::object::obj;
 use crate::tokentype::TType;
-use crate::tokentype::TType::{And, Bang, BangEqual, Echo, Else, Eof, Equal, EqualEqual, False, Greater, GreaterEqual, Identifier, If, LeftCurly, LeftParen, Less, LessEqual, Minus, Null, Number, Or, Plus, RightCurly, Semicolon, Slash, Star, String_tok, True, Var, While};
+use crate::tokentype::TType::{And, Bang, BangEqual, Comma, Echo, Else, Eof, Equal, EqualEqual, False, Fn, Greater, GreaterEqual, Identifier, If, LeftCurly, LeftParen, Less, LessEqual, Minus, MinusEqual, Null, Number, Or, Plus, PlusEqual, RightBracket, RightCurly, RightParen, Semicolon, Slash, Star, String_tok, True, Var, While};
 
 pub struct Parser {
     pub tokens: Vec<Token>,
@@ -47,7 +45,7 @@ impl Parser {
                     file!()
                 );
             }
-            println!("stmt: {:#?}", &expr)
+            // println!("stmt: {:#?}", &expr)
         }
 
     }
@@ -80,17 +78,22 @@ impl Parser {
         let mut val = Expr::Literal(obj::Null);
         let mut identifier= String::new();
         let mut statement = Stmt::Expression(Box::new(Literal(obj::Null)));
-        if self.match_next(&[Identifier]) {
+        if self.match_next(&[Identifier]) || self.check(&Identifier) {
             // println!("{:?}", self.current_token);
-            identifier = self.previous().unwrap().literal.clone();
+            if self.previous().unwrap().ttype == Identifier {
+                identifier = self.previous().unwrap().literal.clone();
+            }
             if self.match_next(&[Equal]) {
                 val = self.expression();
                 statement =  Stmt::VariableAssign {
                     identifier,
                     value: Box::new(val)
                 };
-            } else {
-                statement = Stmt::VariableCall {identifier};
+            } else if self.previous().unwrap().ttype != Var {
+                let identifier = self.expression();
+                statement = Stmt::VariableCall {
+                    identifier: Box::new(identifier)
+                };
             }
         }
         statement
@@ -162,10 +165,24 @@ impl Parser {
     }
 
     fn expression(&mut self) -> Expr {
-        let expr = self.or();
+        let expr = self.assign();
         return expr
     }
 
+    fn assign(&mut self) -> Expr {
+        let mut expr = self.or();
+        while self.match_next(&[Equal]) {
+            let operator = self.previous().unwrap().clone();
+            let right = self.assign();
+            expr = Assign {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right)
+            };
+            return expr
+        }
+        expr
+    }
 
     fn or(&mut self) -> Expr {
         let mut expr = self.and();
@@ -316,8 +333,9 @@ impl Parser {
             TType::Identifier => {
                 self.advance();
                 return Literal(obj::Identifier(self.previous().unwrap().literal.clone()))
-            }
+            },
             _ => {
+                print!("{}", self.current_token.clone().unwrap().literal);
                 return Literal(obj::Null);
             }
         }

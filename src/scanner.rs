@@ -56,7 +56,7 @@ impl Scanner {
             ';' => self.add_token(Semicolon),
             '.' => self.add_token(Dot),
             '*' => self.add_token(Star),
-            '$' => self.add_token(Var),
+            // '$' => self.add_token(Var),
             '-' => {
                 let token = if self.match_next('=') {
                     MinusEqual
@@ -157,6 +157,7 @@ impl Scanner {
 
     fn keywords(check: &str) -> Option<TType> {
         match check {
+            "var" => Some(Var),
             "or" => Some(Or),
             "and" => Some(And),
             "if" => Some(If),

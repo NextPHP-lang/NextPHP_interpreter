@@ -1,15 +1,8 @@
-$i = 0;
-$stones = "";
-while i <= 69 {
-    if i == 0 {
-        $stones = stones + ".";
-        echo $stones;
-    } else {
-        $stones = stones + ".";
-        echo $stones;
-    }
+var i = 0;
+var stones = "";
 
-       $i = i + 1;
-
-
+while i <= 9 {
+    stones = stones + ".";
+    i = i + 1;
+    echo stones;
 };

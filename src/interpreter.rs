@@ -38,6 +38,60 @@ impl Expr {
             Expr::Grouping(expr) => {
                return expr.evaluate(interpreter)
             },
+            Expr::Assign {left,operator,right} => {
+                let mut right = right.evaluate(interpreter);
+                let mut left = match *left.clone() {
+                    Expr::Literal(obj) => {
+                        match obj {
+                            obj::Identifier(id) => {
+                                id
+                            }
+                            _ => {
+                                ScrapError::error(
+                                    EvaluatorError,
+                                    "can't assign to this type",
+                                    line!() as usize,
+                                    file!()
+                                );
+                                String::new()
+                            }
+                        }
+                    }
+                    _ => {
+                        ScrapError::error(
+                            EvaluatorError,
+                            "can't assign",
+                            line!() as usize,
+                            file!()
+                        );
+                        String::new()
+                    }
+
+                };
+                match operator.ttype {
+                    TType::Equal => {
+                        if interpreter.variables.contains_key(&*left) {
+                            interpreter.variables.remove(&*left);
+                            interpreter.variables.insert(left.clone(), right);
+                            return obj::Identifier(left.clone());
+                        } else {
+                            interpreter.variables.insert(left.clone(),right);
+                            return obj::Identifier(left.clone());
+                        }
+                    }
+                    _ => {
+                        ScrapError::error(
+                            EvaluatorError,
+                            "can't assign",
+                            line!() as usize,
+                            file!()
+                        );
+                        obj::Null
+                    }
+                }
+
+
+            }
             Expr::Binary {left,operator,right} => {
                 let mut left = left.evaluate(interpreter);
                 let mut right = right.evaluate(interpreter);
@@ -289,12 +343,29 @@ impl Stmt {
 
                             }
                             obj::Identifier(i) => {
-                                print!("{:?}", interpreter.variables.get(i.as_str()))
+                                println!("{}", interpreter.variables.get(i.as_str()).unwrap());
                             }
                         }
                     },
                     Stmt::VariableCall {identifier} => {
-                        let var = interpreter.variables.get(&*identifier).unwrap();
+                        let identifierobject = identifier.evaluate(interpreter);
+                        let mut id = String::new();
+
+
+                        match identifierobject {
+                            obj::Identifier(identifier) => {
+                                id = identifier;
+                            }
+                            _ => {
+                                ScrapError::error(
+                                    EvaluatorError,
+                                    "not an identifier",
+                                    line!() as usize,
+                                    file!()
+                                )
+                            }
+                        }
+                        let var = interpreter.variables.get(&*id).unwrap();
                         match var {
                             obj::Num(n) => {
                                 println!("{n}");
@@ -312,8 +383,9 @@ impl Stmt {
 
                             }
                             obj::Identifier(i) => {
-                                println!("{i}");
+                                print!("{}", interpreter.variables.get(i.as_str()).unwrap());
                             }
+                            _ => {}
                         }
 
                     }
@@ -339,7 +411,22 @@ impl Stmt {
                 }
             }
             Stmt::VariableCall {identifier} => {
-                let _var = interpreter.variables.get(&*identifier).unwrap();
+                let identifierobject = identifier.evaluate(interpreter);
+                let mut id = String::new();
+                match identifierobject {
+                    obj::Identifier(identifier) => {
+                        id = identifier;
+                    }
+                    _ => {
+                        ScrapError::error(
+                            EvaluatorError,
+                            "not an identifier",
+                            line!() as usize,
+                            file!()
+                        )
+                    }
+                }
+                let _var = interpreter.variables.get(&*id).unwrap();
             }
             Stmt::Expression(expression) => {
                 expression.evaluate(interpreter);
